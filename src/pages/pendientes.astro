@@ -1,0 +1,192 @@
+﻿---
+import MainLayout from "../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Pendientes | VR Scoreboard">
+  <h1 class="page-title">Puntajes pendientes</h1>
+  <p class="page-subtitle">Partidas recibidas desde el juego sin jugador asignado.</p>
+
+  <section class="card">
+    <div class="actions" style="margin-bottom: 12px;">
+      <button id="refresh-btn" class="btn btn-secondary">Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Puntaje</th>
+            <th>Cédula jugador</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pendientes-body"></tbody>
+      </table>
+    </div>
+    <div id="pendientes-status" class="status" style="display:none; margin-top: 10px;"></div>
+  </section>
+
+  <script>
+    const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const body = document.getElementById("pendientes-body");
+    const statusBox = document.getElementById("pendientes-status");
+    const refreshBtn = document.getElementById("refresh-btn");
+    const searchControllers = new Map();
+
+    const formatNumber = (value) => new Intl.NumberFormat("es-EC").format(value || 0);
+    const formatFechaUtc5 = (value) => {
+      const isoWithOffset = `${value}-05:00`;
+      const date = new Date(isoWithOffset);
+      return new Intl.DateTimeFormat("es-EC", {
+        dateStyle: "short",
+        timeStyle: "short",
+        timeZone: "America/Bogota"
+      }).format(date);
+    };
+
+    function showStatus(message, isError = false) {
+      statusBox.style.display = "block";
+      statusBox.className = `status ${isError ? "error" : "ok"}`;
+      statusBox.textContent = message;
+    }
+
+    function renderRows(items) {
+      if (!items.length) {
+        body.innerHTML = `<tr><td colspan="4" class="muted">No hay puntajes pendientes.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = items
+        .map((item) => {
+          const fecha = formatFechaUtc5(item.fecha_juego);
+          return `
+            <tr>
+              <td>${fecha}</td>
+              <td>${formatNumber(item.puntaje)}</td>
+              <td>
+                <input
+                  type="text"
+                  id="cedula-${item.id}"
+                  list="sugerencias-cedula-${item.id}"
+                  placeholder="Ej: 0601234567"
+                  autocomplete="off"
+                />
+                <datalist id="sugerencias-cedula-${item.id}"></datalist>
+              </td>
+              <td>
+                <button class="btn btn-primary" data-asignar-id="${item.id}">Asignar</button>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+
+    async function loadPendientes() {
+      statusBox.style.display = "none";
+      try {
+        const response = await fetch(`${API_BASE}/api/puntajes/pendientes`);
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "No se pudo cargar pendientes");
+        }
+        renderRows(result.data || []);
+      } catch (error) {
+        body.innerHTML = "";
+        showStatus(error.message || "Error de red", true);
+      }
+    }
+
+    async function buscarJugadorIdPorCedula(cedula) {
+      const response = await fetch(`${API_BASE}/api/jugadores?q=${encodeURIComponent(cedula)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) return null;
+      const exacto = (result.data || []).find((j) => String(j.cedula).trim() === String(cedula).trim());
+      return exacto?.id || null;
+    }
+
+    async function cargarSugerenciasCedula(pendienteId, term) {
+      const datalist = document.getElementById(`sugerencias-cedula-${pendienteId}`);
+      if (!datalist) return;
+
+      if (term.trim().length < 2) {
+        datalist.innerHTML = "";
+        return;
+      }
+
+      if (searchControllers.has(pendienteId)) {
+        searchControllers.get(pendienteId).abort();
+      }
+      const controller = new AbortController();
+      searchControllers.set(pendienteId, controller);
+
+      try {
+        const response = await fetch(`${API_BASE}/api/jugadores?q=${encodeURIComponent(term.trim())}`, {
+          signal: controller.signal
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) return;
+
+        const options = (result.data || [])
+          .slice(0, 8)
+          .map((j) => `<option value="${j.cedula}">${j.nombre} - ${j.telefono}</option>`)
+          .join("");
+        datalist.innerHTML = options;
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          datalist.innerHTML = "";
+        }
+      }
+    }
+
+    async function asignarPendiente(pendienteId) {
+      const input = document.getElementById(`cedula-${pendienteId}`);
+      const cedula = String(input?.value || "").trim();
+      if (!cedula) {
+        showStatus("Ingresa una cédula para asignar.", true);
+        return;
+      }
+
+      try {
+        const jugadorId = await buscarJugadorIdPorCedula(cedula);
+        if (!jugadorId) {
+          throw new Error("No existe un jugador registrado con esa cédula.");
+        }
+
+        const response = await fetch(`${API_BASE}/api/puntajes/${pendienteId}/asignar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jugador_id: jugadorId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "No se pudo asignar la partida");
+        }
+        showStatus("Partida asignada correctamente.");
+        await loadPendientes();
+      } catch (error) {
+        showStatus(error.message || "Error de red", true);
+      }
+    }
+
+    body.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const pendienteId = target.getAttribute("data-asignar-id");
+      if (pendienteId) {
+        asignarPendiente(pendienteId);
+      }
+    });
+
+    body.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (!target.id.startsWith("cedula-")) return;
+      const pendienteId = target.id.replace("cedula-", "");
+      cargarSugerenciasCedula(pendienteId, target.value);
+    });
+
+    refreshBtn.addEventListener("click", loadPendientes);
+    loadPendientes();
+  </script>
+</MainLayout>

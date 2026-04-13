@@ -1,0 +1,49 @@
+﻿---
+const path = Astro.url.pathname;
+const links = [
+  { href: "/ranking", label: "Inicio" },
+  { href: "/registro", label: "Registro" },
+  { href: "/pendientes", label: "Pendientes" },
+  { href: "/jugadores", label: "Jugadores" }
+];
+---
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">VR Scoreboard</div>
+    <button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-label="Abrir menú">
+      ☰
+    </button>
+    <nav id="nav-links" class="nav-links">
+      {
+        links.map((link) => (
+          <a
+            class={`nav-link ${path.startsWith(link.href) ? "active" : ""}`}
+            href={link.href}
+          >
+            {link.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+
+  <script>
+    const navToggle = document.getElementById("nav-toggle");
+    const navLinks = document.getElementById("nav-links");
+
+    if (navToggle && navLinks) {
+      navToggle.addEventListener("click", () => {
+        const isOpen = navLinks.classList.toggle("open");
+        navToggle.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      navLinks.querySelectorAll("a").forEach((a) => {
+        a.addEventListener("click", () => {
+          navLinks.classList.remove("open");
+          navToggle.setAttribute("aria-expanded", "false");
+        });
+      });
+    }
+  </script>
+</header>

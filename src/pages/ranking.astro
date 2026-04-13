@@ -1,0 +1,626 @@
+﻿---
+import MainLayout from "../layouts/MainLayout.astro";
+---
+
+<MainLayout title="Inicio | VR Scoreboard">
+  <h1 class="page-title">Operación del evento</h1>
+  <p class="page-subtitle">Todo en una sola vista para usar con internet limitado.</p>
+
+  <section class="card" style="margin-bottom: 16px;">
+    <div class="actions panel-tabs" id="main-tabs">
+      <button class="btn btn-primary" data-tab="ranking">Ranking</button>
+      <button class="btn btn-secondary" data-tab="registro">Registrar jugador</button>
+      <button class="btn btn-secondary" data-tab="pendientes">Asignar pendientes</button>
+      <button class="btn btn-secondary" data-tab="jugadores">Buscar jugador</button>
+    </div>
+  </section>
+
+  <section id="panel-ranking" class="card panel-view">
+    <div class="actions mode-tabs" style="margin-bottom: 12px;">
+      <button id="tab-hoy" class="btn btn-primary">Ranking del día</button>
+      <button id="tab-general" class="btn btn-secondary">Ranking general</button>
+    </div>
+
+    <div id="ranking-podium" class="ranking-podium"></div>
+
+    <div class="table-wrap desktop-only" style="margin-top: 10px;">
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Jugador</th>
+            <th>Cédula</th>
+            <th>Teléfono</th>
+            <th>Cliente</th>
+            <th>Puntaje</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-body"></tbody>
+      </table>
+    </div>
+
+    <div id="ranking-list-mobile" class="ranking-list-mobile"></div>
+    <div id="ranking-status" class="status" style="display:none; margin-top: 10px;"></div>
+  </section>
+
+  <section id="panel-registro" class="card panel-view" style="display:none;">
+    <form id="registro-form" style="max-width: 760px;">
+      <div class="actions">
+        <label style="flex:1; margin:0;">
+          Cédula
+          <input type="text" name="cedula" id="cedula-input" required minlength="5" maxlength="32" placeholder="Ej: 0604701789" />
+        </label>
+        <button type="button" id="consultar-btn" class="btn btn-secondary">Consultar cédula</button>
+      </div>
+      <div class="status" id="cliente-state-box" style="margin-top: 0;">
+        <strong id="cliente-state">Sin verificar</strong>
+        <div id="cliente-state-detail" class="muted">Consulta la cédula para autocompletar.</div>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+        <label>
+          Nombre
+          <input type="text" name="nombre" id="nombre-input" required minlength="2" maxlength="120" />
+        </label>
+        <label>
+          Teléfono
+          <input type="text" name="telefono" id="telefono-input" required minlength="6" maxlength="32" />
+        </label>
+      </div>
+      <input type="hidden" name="is_cliente" id="is-cliente-input" value="false" />
+      <button type="submit" class="btn btn-primary">Guardar jugador</button>
+    </form>
+    <div id="lookup-status" class="status" style="display:none;"></div>
+    <div id="registro-status" class="status" style="display:none;"></div>
+    <div id="jugador-id-box" class="status" style="display:none;"></div>
+  </section>
+
+  <section id="panel-pendientes" class="card panel-view" style="display:none;">
+    <div class="actions" style="margin-bottom: 12px;">
+      <button id="refresh-pendientes-btn" class="btn btn-secondary">Actualizar</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Puntaje</th>
+            <th>Cédula jugador</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pendientes-body"></tbody>
+      </table>
+    </div>
+    <div id="pendientes-status" class="status" style="display:none;"></div>
+  </section>
+
+  <section id="panel-jugadores" class="card panel-view" style="display:none;">
+    <form id="jugadores-search-form" style="margin-bottom: 12px;">
+      <div class="actions">
+        <label style="flex:1; margin:0;">
+          Buscar por nombre o cédula
+          <input id="jugadores-search-input" type="text" placeholder="Ej: Juan o 0601234567" />
+        </label>
+        <button type="submit" class="btn btn-primary">Buscar</button>
+      </div>
+    </form>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Jugador</th>
+            <th>Cédula</th>
+            <th>Teléfono</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="jugadores-body"></tbody>
+      </table>
+    </div>
+    <div id="jugadores-status" class="status" style="display:none;"></div>
+    <div id="jugador-detalle-inline" class="card" style="display:none; margin-top: 12px;"></div>
+  </section>
+
+  <style>
+    .panel-tabs .btn {
+      min-width: 170px;
+    }
+
+    .ranking-podium {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 8px;
+    }
+
+    .podium-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+      min-height: 112px;
+      display: grid;
+      gap: 4px;
+      align-content: end;
+    }
+
+    .podium-item.pos-1 {
+      background: #fff8db;
+      min-height: 140px;
+      border-color: #f1df8e;
+    }
+
+    .podium-item.pos-2 {
+      background: #f8fafc;
+    }
+
+    .podium-item.pos-3 {
+      background: #fff3e8;
+    }
+
+    .podium-rank {
+      font-size: 1.2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .podium-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .podium-score {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #0f766e;
+    }
+
+    .podium-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .ranking-list-mobile {
+      display: none;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .ranking-row-mobile {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .ranking-row-mobile .name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .ranking-row-mobile .score {
+      font-weight: 800;
+      color: #0f766e;
+      margin-top: 2px;
+    }
+
+    .ranking-row-mobile .meta {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    @media (max-width: 640px) {
+      .panel-tabs {
+        gap: 8px;
+      }
+
+      .panel-tabs .btn,
+      .mode-tabs .btn {
+        min-width: 0;
+        flex: 1 1 calc(50% - 4px);
+        width: auto;
+      }
+
+      .ranking-podium {
+        gap: 8px;
+      }
+
+      .podium-item {
+        min-height: 98px;
+        padding: 8px;
+      }
+
+      .podium-item.pos-1 {
+        min-height: 118px;
+      }
+
+      .desktop-only {
+        display: none;
+      }
+
+      .ranking-list-mobile {
+        display: grid;
+      }
+    }
+  </style>
+
+  <script>
+    const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const formatNumber = (value) => new Intl.NumberFormat("es-EC").format(value || 0);
+
+    const panels = {
+      ranking: document.getElementById("panel-ranking"),
+      registro: document.getElementById("panel-registro"),
+      pendientes: document.getElementById("panel-pendientes"),
+      jugadores: document.getElementById("panel-jugadores")
+    };
+
+    function switchPanel(name) {
+      Object.entries(panels).forEach(([key, node]) => {
+        node.style.display = key === name ? "block" : "none";
+      });
+      document.querySelectorAll("#main-tabs [data-tab]").forEach((btn) => {
+        btn.className = btn.getAttribute("data-tab") === name ? "btn btn-primary" : "btn btn-secondary";
+      });
+      if (name === "pendientes") loadPendientes();
+      if (name === "jugadores") loadJugadores();
+    }
+
+    document.getElementById("main-tabs").addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const tab = target.getAttribute("data-tab");
+      if (tab) switchPanel(tab);
+    });
+
+    const rankingBody = document.getElementById("ranking-body");
+    const rankingPodium = document.getElementById("ranking-podium");
+    const rankingMobile = document.getElementById("ranking-list-mobile");
+    const rankingStatus = document.getElementById("ranking-status");
+    const btnHoy = document.getElementById("tab-hoy");
+    const btnGeneral = document.getElementById("tab-general");
+
+    function buildPodium(items) {
+      const top3 = [items[1] || null, items[0] || null, items[2] || null];
+      rankingPodium.innerHTML = top3.map((item, index) => {
+        const pos = index === 0 ? 2 : index === 1 ? 1 : 3;
+        if (!item) {
+          return `<article class="podium-item pos-${pos}"><div class="podium-rank">${pos}</div><div class="podium-meta">Sin jugador</div></article>`;
+        }
+        return `
+          <article class="podium-item pos-${pos}">
+            <div class="podium-rank">${pos}</div>
+            <div class="podium-name">${item.nombre}</div>
+            <div class="podium-score">${formatNumber(item.puntaje)}</div>
+            <div class="podium-meta">${item.cedula}</div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderRankingRows(items) {
+      if (!items.length) {
+        rankingBody.innerHTML = `<tr><td colspan="6" class="muted">Sin datos disponibles.</td></tr>`;
+        rankingPodium.innerHTML = `<article class="podium-item"><div class="podium-meta">Sin datos para mostrar</div></article>`;
+        rankingMobile.innerHTML = `<div class="muted">Sin datos disponibles.</div>`;
+        return;
+      }
+
+      buildPodium(items);
+
+      rankingBody.innerHTML = items.map((item, index) => {
+        const rowClass = index === 0 ? "top-1" : index === 1 ? "top-2" : index === 2 ? "top-3" : "";
+        return `<tr class="${rowClass}"><td>${index + 1}</td><td>${item.nombre}</td><td>${item.cedula}</td><td>${item.telefono}</td><td>${item.is_cliente ? "Sí" : "No"}</td><td>${formatNumber(item.puntaje)}</td></tr>`;
+      }).join("");
+
+      rankingMobile.innerHTML = items.map((item, index) => `
+        <article class="ranking-row-mobile">
+          <div class="name">#${index + 1} ${item.nombre}</div>
+          <div class="score">${formatNumber(item.puntaje)}</div>
+          <div class="meta">Cédula: ${item.cedula}<br/>Tel: ${item.telefono}<br/>Cliente: ${item.is_cliente ? "Sí" : "No"}</div>
+        </article>
+      `).join("");
+    }
+
+    async function loadRanking(mode) {
+      rankingStatus.style.display = "none";
+      btnHoy.className = mode === "hoy" ? "btn btn-primary" : "btn btn-secondary";
+      btnGeneral.className = mode === "general" ? "btn btn-primary" : "btn btn-secondary";
+      const endpoint = mode === "hoy" ? "/api/ranking/hoy" : "/api/ranking/general";
+      try {
+        const response = await fetch(`${API_BASE}${endpoint}`);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo cargar ranking");
+        renderRankingRows(result.data || []);
+      } catch (error) {
+        rankingBody.innerHTML = "";
+        rankingPodium.innerHTML = "";
+        rankingMobile.innerHTML = "";
+        rankingStatus.style.display = "block";
+        rankingStatus.className = "status error";
+        rankingStatus.textContent = error.message || "Error de red";
+      }
+    }
+
+    btnHoy.addEventListener("click", () => loadRanking("hoy"));
+    btnGeneral.addEventListener("click", () => loadRanking("general"));
+
+    const form = document.getElementById("registro-form");
+    const cedulaInput = document.getElementById("cedula-input");
+    const nombreInput = document.getElementById("nombre-input");
+    const telefonoInput = document.getElementById("telefono-input");
+    const isClienteInput = document.getElementById("is-cliente-input");
+    const consultarBtn = document.getElementById("consultar-btn");
+    const stateTitle = document.getElementById("cliente-state");
+    const stateDetail = document.getElementById("cliente-state-detail");
+    const lookupStatus = document.getElementById("lookup-status");
+    const registroStatus = document.getElementById("registro-status");
+    const jugadorIdBox = document.getElementById("jugador-id-box");
+    let autoFilledFromLookup = false;
+
+    function setState(title, detail, isCliente = false) {
+      stateTitle.textContent = title;
+      stateDetail.textContent = detail;
+      isClienteInput.value = isCliente ? "true" : "false";
+    }
+
+    function clearAutoFill() {
+      if (!autoFilledFromLookup) return;
+      nombreInput.value = "";
+      telefonoInput.value = "";
+      autoFilledFromLookup = false;
+    }
+
+    async function consultarCedula() {
+      const cedula = String(cedulaInput.value || "").trim();
+      if (cedula.length < 5) return;
+      consultarBtn.disabled = true;
+      consultarBtn.textContent = "Consultando...";
+      lookupStatus.style.display = "none";
+      try {
+        const response = await fetch(`${API_BASE}/api/jugadores/lookup/${encodeURIComponent(cedula)}`);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo consultar");
+        const data = result.data || {};
+        if (data.available && data.is_cliente) {
+          if (data.nombre) nombreInput.value = data.nombre;
+          if (data.telefono) telefonoInput.value = data.telefono;
+          autoFilledFromLookup = true;
+          setState("Cliente verificado", "Datos completados automáticamente.", true);
+          return;
+        }
+        clearAutoFill();
+        setState("No cliente", "No se encontró en Fibra.", false);
+      } catch (error) {
+        clearAutoFill();
+        setState("Sin verificación", "Puedes continuar manualmente.", false);
+        lookupStatus.style.display = "block";
+        lookupStatus.className = "status error";
+        lookupStatus.textContent = error.message || "Error de red";
+      } finally {
+        consultarBtn.disabled = false;
+        consultarBtn.textContent = "Consultar cédula";
+      }
+    }
+
+    consultarBtn.addEventListener("click", consultarCedula);
+    cedulaInput.addEventListener("input", () => {
+      clearAutoFill();
+      setState("Sin verificar", "Cédula cambiada. Consulta nuevamente.", false);
+      lookupStatus.style.display = "none";
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      registroStatus.style.display = "none";
+      jugadorIdBox.style.display = "none";
+      const fd = new FormData(form);
+      const payload = {
+        nombre: String(fd.get("nombre") || "").trim(),
+        cedula: String(fd.get("cedula") || "").trim(),
+        telefono: String(fd.get("telefono") || "").trim(),
+        is_cliente: String(fd.get("is_cliente")) === "true"
+      };
+      try {
+        const response = await fetch(`${API_BASE}/api/jugadores`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        registroStatus.style.display = "block";
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo guardar");
+        registroStatus.className = "status ok";
+        registroStatus.textContent = result.message;
+        const id = result?.data?.jugador?.id;
+        if (id) {
+          jugadorIdBox.style.display = "block";
+          jugadorIdBox.className = "status ok";
+          jugadorIdBox.innerHTML = `<strong>jugador_id:</strong> ${id}`;
+        }
+      } catch (error) {
+        registroStatus.className = "status error";
+        registroStatus.textContent = error.message || "Error de red";
+      }
+    });
+
+    const pendientesBody = document.getElementById("pendientes-body");
+    const pendientesStatus = document.getElementById("pendientes-status");
+    const searchControllers = new Map();
+    document.getElementById("refresh-pendientes-btn").addEventListener("click", loadPendientes);
+
+    async function buscarJugadorIdPorCedula(cedula) {
+      const response = await fetch(`${API_BASE}/api/jugadores?q=${encodeURIComponent(cedula)}`);
+      const result = await response.json();
+      if (!response.ok || !result.success) return null;
+      const exacto = (result.data || []).find((j) => String(j.cedula).trim() === String(cedula).trim());
+      return exacto?.id || null;
+    }
+
+    async function cargarSugerenciasCedula(pendienteId, term) {
+      const datalist = document.getElementById(`sugerencias-cedula-${pendienteId}`);
+      if (!datalist) return;
+
+      if (term.trim().length < 2) {
+        datalist.innerHTML = "";
+        return;
+      }
+
+      if (searchControllers.has(pendienteId)) {
+        searchControllers.get(pendienteId).abort();
+      }
+      const controller = new AbortController();
+      searchControllers.set(pendienteId, controller);
+
+      try {
+        const response = await fetch(`${API_BASE}/api/jugadores?q=${encodeURIComponent(term.trim())}`, {
+          signal: controller.signal
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) return;
+        const options = (result.data || [])
+          .slice(0, 8)
+          .map((j) => `<option value="${j.cedula}">${j.nombre} - ${j.telefono}</option>`)
+          .join("");
+        datalist.innerHTML = options;
+      } catch (error) {
+        if (error.name !== "AbortError") datalist.innerHTML = "";
+      }
+    }
+
+    async function loadPendientes() {
+      pendientesStatus.style.display = "none";
+      try {
+        const response = await fetch(`${API_BASE}/api/puntajes/pendientes`);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo cargar pendientes");
+        const items = result.data || [];
+        if (!items.length) {
+          pendientesBody.innerHTML = `<tr><td colspan="4" class="muted">No hay puntajes pendientes.</td></tr>`;
+          return;
+        }
+        pendientesBody.innerHTML = items.map((item) => {
+          const fecha = new Date(`${item.fecha_juego}-05:00`).toLocaleString("es-EC", { timeZone: "America/Bogota" });
+          return `
+            <tr>
+              <td>${fecha}</td>
+              <td>${formatNumber(item.puntaje)}</td>
+              <td>
+                <input type="text" id="cedula-${item.id}" list="sugerencias-cedula-${item.id}" placeholder="Ej: 0601234567" autocomplete="off" />
+                <datalist id="sugerencias-cedula-${item.id}"></datalist>
+              </td>
+              <td><button class="btn btn-primary" data-asignar-id="${item.id}">Asignar</button></td>
+            </tr>
+          `;
+        }).join("");
+      } catch (error) {
+        pendientesBody.innerHTML = "";
+        pendientesStatus.style.display = "block";
+        pendientesStatus.className = "status error";
+        pendientesStatus.textContent = error.message || "Error de red";
+      }
+    }
+
+    pendientesBody.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) return;
+      if (!target.id.startsWith("cedula-")) return;
+      const pendingId = target.id.replace("cedula-", "");
+      cargarSugerenciasCedula(pendingId, target.value);
+    });
+
+    pendientesBody.addEventListener("click", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const pendingId = target.getAttribute("data-asignar-id");
+      if (!pendingId) return;
+      const cedula = String(document.getElementById(`cedula-${pendingId}`)?.value || "").trim();
+      if (!cedula) {
+        pendientesStatus.style.display = "block";
+        pendientesStatus.className = "status error";
+        pendientesStatus.textContent = "Ingresa una cédula para asignar.";
+        return;
+      }
+      try {
+        const jugadorId = await buscarJugadorIdPorCedula(cedula);
+        if (!jugadorId) throw new Error("No existe un jugador con esa cédula.");
+        const response = await fetch(`${API_BASE}/api/puntajes/${pendingId}/asignar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jugador_id: jugadorId })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo asignar");
+        pendientesStatus.style.display = "block";
+        pendientesStatus.className = "status ok";
+        pendientesStatus.textContent = "Partida asignada correctamente.";
+        loadPendientes();
+      } catch (error) {
+        pendientesStatus.style.display = "block";
+        pendientesStatus.className = "status error";
+        pendientesStatus.textContent = error.message || "Error de red";
+      }
+    });
+
+    const jugadoresBody = document.getElementById("jugadores-body");
+    const jugadoresStatus = document.getElementById("jugadores-status");
+    const detalleInline = document.getElementById("jugador-detalle-inline");
+
+    async function loadJugadores(query = "") {
+      jugadoresStatus.style.display = "none";
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("q", query.trim());
+      const url = `${API_BASE}/api/jugadores${params.toString() ? `?${params}` : ""}`;
+      try {
+        const response = await fetch(url);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo cargar jugadores");
+        const items = result.data || [];
+        if (!items.length) {
+          jugadoresBody.innerHTML = `<tr><td colspan="5" class="muted">No se encontraron jugadores.</td></tr>`;
+          return;
+        }
+        jugadoresBody.innerHTML = items.map((j) => `<tr><td>${j.id}</td><td>${j.nombre}</td><td>${j.cedula}</td><td>${j.telefono}</td><td><button class="btn btn-secondary" data-detalle-id="${j.id}">Ver detalle</button></td></tr>`).join("");
+      } catch (error) {
+        jugadoresBody.innerHTML = "";
+        jugadoresStatus.style.display = "block";
+        jugadoresStatus.className = "status error";
+        jugadoresStatus.textContent = error.message || "Error de red";
+      }
+    }
+
+    async function loadDetalleJugador(jugadorId) {
+      try {
+        const response = await fetch(`${API_BASE}/api/jugadores/${jugadorId}`);
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || "No se pudo cargar detalle");
+        const j = result.data;
+        detalleInline.style.display = "block";
+        detalleInline.innerHTML = `<h3 style="margin-top:0;">Detalle jugador</h3><div><strong>${j.nombre}</strong> - ${j.cedula}</div><div class="muted" style="margin-top:4px;">Teléfono: ${j.telefono} | Cliente: ${j.is_cliente ? "Sí" : "No"}</div><div style="margin-top:8px;">Mejor puntaje: <strong>${formatNumber(j.mejor_puntaje)}</strong> | Partidas: <strong>${j.cantidad_partidas}</strong></div>`;
+      } catch (error) {
+        detalleInline.style.display = "block";
+        detalleInline.innerHTML = `<div class="status error">${error.message || "Error de red"}</div>`;
+      }
+    }
+
+    document.getElementById("jugadores-search-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const value = document.getElementById("jugadores-search-input").value || "";
+      loadJugadores(String(value));
+    });
+
+    jugadoresBody.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const id = target.getAttribute("data-detalle-id");
+      if (id) loadDetalleJugador(id);
+    });
+
+    switchPanel("ranking");
+    loadRanking("hoy");
+  </script>
+</MainLayout>
