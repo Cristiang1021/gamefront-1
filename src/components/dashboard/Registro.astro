@@ -1,0 +1,97 @@
+---
+---
+<div class="card" style="grid-area: registro;">
+  <h2 class="card-title">Check-in Participante</h2>
+  <p class="card-subtitle">Consulta de base Fibra y validación ERP.</p>
+
+  <div id="reg-flow" class="flow-container state-start">
+    <!-- Search Phase -->
+    <div class="input-group">
+      <label for="r-cedula">Documento de Identidad</label>
+      <div class="input-with-action">
+        <input type="text" id="r-cedula" placeholder="Ej: 0604701789" maxlength="15" />
+        <button class="btn btn-primary" id="consultar-btn">Consultar</button>
+      </div>
+    </div>
+
+    <!-- Feedback Phase -->
+    <div id="cliente-status-box" class="status-box" style="display:none">
+      <div class="badge-row">
+        <span id="badge-type" class="badge">Consultando...</span>
+      </div>
+      <p id="badge-desc" class="status-text">Validando en el sistema...</p>
+    </div>
+
+    <!-- Data Phase -->
+    <div class="fields-stack">
+      <div class="input-group">
+        <label for="r-nombre">Nombre Completo</label>
+        <input type="text" id="r-nombre" placeholder="Nombre y Apellido" />
+      </div>
+      <div class="input-group">
+        <label for="r-telefono">Teléfono</label>
+        <input type="tel" id="r-telefono" placeholder="Ej: 0991234567" />
+      </div>
+    </div>
+
+    <input type="hidden" id="r-is-cliente" value="false" />
+    
+    <div class="action-footer">
+      <button class="btn btn-primary btn-full" id="guardar-btn">Finalizar Registro</button>
+      <div id="r-msg" class="feedback-msg" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .input-with-action {
+    display: flex;
+    gap: 8px;
+  }
+  .input-with-action input { flex: 1; }
+
+  .status-box {
+    padding: 16px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    animation: fadeIn 0.3s ease;
+  }
+
+  .badge-row { margin-bottom: 4px; }
+
+  .status-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .fields-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .btn-full { width: 100%; margin-top: 12px; }
+
+  /* Flow States Visuals */
+  :global(.state-loading) .input-with-action { opacity: 0.6; pointer-events: none; }
+  
+  :global(.state-client) .status-box { background: var(--accent-soft); border-color: rgba(59, 130, 246, 0.2); }
+  :global(.state-manual) .status-box { background: #fefce8; border-color: rgba(245, 158, 11, 0.2); }
+
+  .feedback-msg {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  :global(.feedback-msg.success) { background: var(--success-soft); color: var(--success); }
+  :global(.feedback-msg.error) { background: #fee2e2; color: var(--error); }
+</style>

@@ -1,322 +1,276 @@
-﻿---
+---
 import MainLayout from "../layouts/MainLayout.astro";
 ---
 
 <MainLayout title="Registro | VR Scoreboard">
-  <h1 class="page-title">Registro de jugador</h1>
-  <p class="page-subtitle">Registra al jugador antes de iniciar su partida en VR.</p>
+  <div class="container registro-shell animate-in">
+    <h1>Nuevo Registro</h1>
+    <p class="subtitle">Valida la identidad del participante.</p>
 
-  <section class="card" style="max-width: 760px;">
-    <div class="registro-header">
-      <h2>Paso 1: Validar cédula</h2>
-      <p>Consulta automática en Fibra para detectar cliente y autocompletar datos.</p>
-    </div>
-
-    <form id="registro-form" class="registro-form">
-      <div class="cedula-row">
-        <label class="field-cedula">
-          Cédula
-          <input
-            type="text"
-            name="cedula"
-            id="cedula-input"
-            required
-            minlength="5"
-            maxlength="32"
-            placeholder="Ej: 0604701789"
-          />
-        </label>
-        <button type="button" id="consultar-btn" class="btn btn-secondary">Consultar cédula</button>
-      </div>
-
-      <div class="cliente-box" id="cliente-box">
-        <div class="cliente-label">Estado del jugador</div>
-        <div class="cliente-state">
-          <span id="cliente-badge" class="badge neutral">Sin verificar</span>
-          <span id="cliente-detail" class="muted">Consulta la cédula para completar automáticamente.</span>
+    <div class="card main-form">
+      <!-- Etapa 1: Cédula -->
+      <div class="field">
+        <label for="cedula">Documento de Identidad</label>
+        <div class="input-inline">
+          <input type="text" id="cedula" placeholder="060XXXXXXX" inputmode="numeric" maxlength="15" />
+          <button class="btn btn-primary" id="btn-validar">Validar</button>
         </div>
       </div>
 
-      <div class="fields-grid">
-        <label>
-          Nombre
-          <input
-            type="text"
-            name="nombre"
-            id="nombre-input"
-            required
-            minlength="2"
-            maxlength="120"
-            placeholder="Nombre del jugador"
-          />
-        </label>
-        <label>
-          Teléfono
-          <input
-            type="text"
-            name="telefono"
-            id="telefono-input"
-            required
-            minlength="6"
-            maxlength="32"
-            placeholder="Ej: 0999999999"
-          />
-        </label>
+      <!-- Etapa 2: Feedback ERP -->
+      <div id="status-card" class="status-card" style="display:none">
+        <div class="status-icon"></div>
+        <div class="status-info">
+          <div id="status-title" class="status-title">Validando...</div>
+          <div id="status-msg" class="status-msg">Consultando base de datos Fibra.</div>
+        </div>
       </div>
 
-      <input type="hidden" name="is_cliente" id="is-cliente-input" value="false" />
+      <!-- Etapa 3: Datos Secundarios -->
+      <div class="secondary-fields">
+        <div class="field">
+          <label for="nombre">Nombre Completo</label>
+          <input type="text" id="nombre" placeholder="Nombre Apellido" />
+        </div>
+        <div class="field">
+          <label for="telefono">Teléfono de Contacto</label>
+          <input type="tel" id="telefono" placeholder="099XXXXXXX" />
+        </div>
+      </div>
 
-      <button type="submit" class="btn btn-primary" style="width: 100%;">Guardar jugador</button>
-    </form>
-
-    <div id="lookup-status" class="status" style="display:none;"></div>
-    <div id="registro-status" class="status" style="display:none;"></div>
-    <div id="jugador-id-box" class="status" style="display:none; margin-top: 10px;"></div>
-  </section>
+      <input type="hidden" id="is-cliente" value="false" />
+      
+      <button class="btn btn-primary btn-full" id="btn-guardar">Registrar Participante</button>
+      <div id="feedback" class="feedback-toast" style="display:none"></div>
+      <div id="error-card" class="status-card warn" style="display:none">
+        <div class="status-info">
+          <div class="status-title">No se pudo completar la acción</div>
+          <div id="error-msg" class="status-msg">Revisa la conexión e intenta otra vez.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <style>
-    .registro-header h2 {
-      margin: 0;
-      font-size: 1.08rem;
+    :global(body) { overflow: hidden; }
+    .registro-shell {
+      min-height: calc(100dvh - 94px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-top: 12px;
+      padding-bottom: 12px;
     }
 
-    .registro-header p {
-      margin: 6px 0 16px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
+    .main-form { margin-bottom: 0; }
+    .input-inline { display: flex; gap: 12px; }
+    .input-inline input { flex: 1; }
 
-    .registro-form {
-      gap: 14px;
-    }
-
-    .cedula-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: end;
-    }
-
-    .field-cedula {
-      margin: 0;
-    }
-
-    .cliente-box {
-      border: 1px solid var(--border);
-      background: #f9fafb;
-      border-radius: 10px;
-      padding: 10px 12px;
-    }
-
-    .cliente-label {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    .cliente-state {
+    .status-card {
       display: flex;
       align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
+      gap: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      margin-bottom: 14px;
+      animation: fadeIn 0.3s ease;
     }
 
-    .badge {
+    .status-card.ok { background: rgba(37, 195, 107, 0.12); border-color: rgba(37, 195, 107, 0.5); }
+    .status-card.warn { background: rgba(255, 77, 77, 0.12); border-color: rgba(255, 77, 77, 0.45); }
+
+    .status-title { font-weight: 700; font-size: 15px; color: var(--text); }
+    .status-msg { font-size: 13px; color: var(--text-muted); }
+
+    .secondary-fields { margin-top: 4px; }
+
+    .feedback-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      color: #000000;
+      padding: 12px 24px;
       border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.82rem;
-      font-weight: 700;
-      border: 1px solid transparent;
-      white-space: nowrap;
+      font-weight: 600;
+      box-shadow: var(--ring) 0 0 0 2px;
+      z-index: 2000;
     }
 
-    .badge.ok {
-      background: #ecfdf5;
-      color: #065f46;
-      border-color: #a7f3d0;
-    }
-
-    .badge.no {
-      background: #f8fafc;
-      color: #334155;
-      border-color: #cbd5e1;
-    }
-
-    .badge.error {
-      background: #fef2f2;
-      color: #991b1b;
-      border-color: #fecaca;
-    }
-
-    .badge.neutral {
-      background: #f3f4f6;
-      color: #4b5563;
-      border-color: #d1d5db;
-    }
-
-    .fields-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    @media (max-width: 760px) {
-      .cedula-row {
-        grid-template-columns: 1fr;
-      }
-
-      .fields-grid {
-        grid-template-columns: 1fr;
+    @media (min-width: 768px) {
+      :global(body) { overflow: auto; }
+      .registro-shell {
+        min-height: calc(100dvh - 110px);
+        max-width: 680px;
       }
     }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   </style>
 
   <script>
-    const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-    const form = document.getElementById("registro-form");
-    const cedulaInput = document.getElementById("cedula-input");
-    const nombreInput = document.getElementById("nombre-input");
-    const telefonoInput = document.getElementById("telefono-input");
-    const isClienteInput = document.getElementById("is-cliente-input");
-    const consultarBtn = document.getElementById("consultar-btn");
-    const clienteBadge = document.getElementById("cliente-badge");
-    const clienteDetail = document.getElementById("cliente-detail");
-    const lookupStatus = document.getElementById("lookup-status");
-    const statusBox = document.getElementById("registro-status");
-    const jugadorIdBox = document.getElementById("jugador-id-box");
-    let autoFilledFromLookup = false;
+    const API = import.meta.env.PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
-    function showLookup(message, isError = false) {
-      lookupStatus.style.display = "block";
-      lookupStatus.className = `status ${isError ? "error" : "ok"}`;
-      lookupStatus.textContent = message;
+    const cedInp = document.getElementById("cedula") as HTMLInputElement;
+    const nomInp = document.getElementById("nombre") as HTMLInputElement;
+    const telInp = document.getElementById("telefono") as HTMLInputElement;
+    const isCli = document.getElementById("is-cliente") as HTMLInputElement;
+    
+    const statusCard = document.getElementById("status-card")!;
+    const statusTitle = document.getElementById("status-title")!;
+    const statusMsg = document.getElementById("status-msg")!;
+    const errorCard = document.getElementById("error-card")!;
+    const errorMsg = document.getElementById("error-msg")!;
+    const btnValidar = document.getElementById("btn-validar") as HTMLButtonElement;
+    const btnGuardar = document.getElementById("btn-guardar") as HTMLButtonElement;
+    let cedulaYaRegistrada = false;
+
+    function setBusy(btn: HTMLButtonElement, busy: boolean, text: string, idleText: string) {
+      btn.disabled = busy;
+      btn.textContent = busy ? text : idleText;
     }
 
-    function setClienteState(state, detailText) {
-      if (state === "cliente") {
-        clienteBadge.className = "badge ok";
-        clienteBadge.textContent = "Cliente verificado";
-        isClienteInput.value = "true";
-      } else if (state === "no_cliente") {
-        clienteBadge.className = "badge no";
-        clienteBadge.textContent = "No cliente";
-        isClienteInput.value = "false";
-      } else if (state === "error") {
-        clienteBadge.className = "badge error";
-        clienteBadge.textContent = "Sin verificación";
-      } else {
-        clienteBadge.className = "badge neutral";
-        clienteBadge.textContent = "Sin verificar";
-        isClienteInput.value = "false";
-      }
-      clienteDetail.textContent = detailText;
+    function showError(msg: string) {
+      errorMsg.textContent = msg;
+      errorCard.style.display = "flex";
     }
 
-    function clearAutoFilledFields() {
-      if (!autoFilledFromLookup) return;
-      nombreInput.value = "";
-      telefonoInput.value = "";
-      autoFilledFromLookup = false;
+    function setGuardarHabilitado(habilitado: boolean) {
+      btnGuardar.disabled = !habilitado;
+      btnGuardar.textContent = habilitado ? "Registrar Participante" : "Participante Ya Registrado";
     }
 
-    async function consultarCedula() {
-      const cedula = String(cedulaInput.value || "").trim();
-      if (cedula.length < 5) {
-        showLookup("Ingresa una cédula válida para consultar.", true);
-        setClienteState("neutral", "Consulta la cédula para completar automáticamente.");
-        return;
-      }
+    function limpiarDatosDerivados() {
+      nomInp.value = "";
+      telInp.value = "";
+      isCli.value = "false";
+      statusCard.style.display = "none";
+      statusCard.className = "status-card";
+      statusTitle.textContent = "Validando...";
+      statusMsg.textContent = "Consultando base de datos Fibra.";
+    }
 
-      const originalText = consultarBtn.textContent;
-      consultarBtn.disabled = true;
-      consultarBtn.textContent = "Consultando...";
+    async function validar() {
+      if (cedInp.value.length < 5) return;
+      errorCard.style.display = "none";
+      setBusy(btnValidar, true, "Validando...", "Validar");
+      cedulaYaRegistrada = false;
+      setGuardarHabilitado(true);
+      
+      statusCard.style.display = "flex";
+      statusCard.className = "status-card";
+      statusTitle.textContent = "Consultando...";
+      statusMsg.textContent = "Buscando en base de datos externa.";
 
       try {
-        const response = await fetch(`${API_BASE}/api/jugadores/lookup/${encodeURIComponent(cedula)}`);
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "No se pudo consultar la cédula");
-        }
+        const localResp = await fetch(`${API}/api/jugadores?q=${encodeURIComponent(cedInp.value.trim())}`);
+        if (!localResp.ok) throw new Error("local_lookup_error");
+        const localData = await localResp.json();
+        const jugadorExistente = (localData.data || []).find((j: any) => j.cedula === cedInp.value.trim());
 
-        const data = result.data || {};
-        if (data.available && data.is_cliente) {
-          if (data.nombre) nombreInput.value = data.nombre;
-          if (data.telefono) telefonoInput.value = data.telefono;
-          autoFilledFromLookup = true;
-          setClienteState("cliente", "Coincide con base Fibra. Datos autocompletados.");
-          showLookup("Cliente encontrado. Se autocompletó nombre, teléfono y estado de cliente.");
+        if (jugadorExistente) {
+          cedulaYaRegistrada = true;
+          statusCard.classList.add("warn");
+          statusTitle.textContent = "Participante Ya Registrado";
+          statusMsg.textContent = "Esta cédula ya existe en el sistema.";
+          nomInp.value = jugadorExistente.nombre || "";
+          telInp.value = jugadorExistente.telefono || "";
+          isCli.value = jugadorExistente.is_cliente ? "true" : "false";
+          setGuardarHabilitado(false);
           return;
         }
 
-        clearAutoFilledFields();
-        setClienteState("no_cliente", "No se encontró como cliente en Fibra.");
-        showLookup("No se encontró cliente en Fibra. Se registrará como no cliente.");
-      } catch (error) {
-        clearAutoFilledFields();
-        setClienteState("error", "No se pudo validar en este momento. Puedes continuar manualmente.");
-        showLookup(error.message || "Error consultando servicio externo", true);
+        const r = await fetch(`${API}/api/jugadores/lookup/${encodeURIComponent(cedInp.value)}`);
+        const d = await r.json();
+        const data = d.data || {};
+
+        if (data.available && data.is_cliente) {
+          statusCard.classList.add("ok");
+          statusTitle.textContent = "Cliente Verificado";
+          statusMsg.textContent = "Se han recuperado los datos automáticamente.";
+          nomInp.value = data.nombre || "";
+          telInp.value = data.telefono || "";
+          isCli.value = "true";
+        } else {
+          statusCard.classList.add("warn");
+          statusTitle.textContent = "Visitante Nuevo";
+          statusMsg.textContent = "Por favor ingresa los datos manualmente.";
+          isCli.value = "false";
+        }
+      } catch {
+        statusCard.classList.add("warn");
+        statusTitle.textContent = "No se pudo validar";
+        statusMsg.textContent = "Puedes continuar con registro manual.";
+        showError("Error consultando la base externa.");
       } finally {
-        consultarBtn.disabled = false;
-        consultarBtn.textContent = originalText;
+        setBusy(btnValidar, false, "Validando...", "Validar");
       }
     }
 
-    consultarBtn.addEventListener("click", consultarCedula);
-    cedulaInput.addEventListener("input", () => {
-      clearAutoFilledFields();
-      setClienteState("neutral", "Cédula cambiada. Consulta nuevamente para validar.");
-      lookupStatus.style.display = "none";
-    });
-    cedulaInput.addEventListener("blur", () => {
-      if ((cedulaInput.value || "").trim().length >= 5) {
-        consultarCedula();
-      }
-    });
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      statusBox.style.display = "none";
-      jugadorIdBox.style.display = "none";
-
-      const formData = new FormData(form);
+    async function guardar() {
+      errorCard.style.display = "none";
       const payload = {
-        nombre: String(formData.get("nombre") || "").trim(),
-        cedula: String(formData.get("cedula") || "").trim(),
-        telefono: String(formData.get("telefono") || "").trim(),
-        is_cliente: String(formData.get("is_cliente")) === "true"
+        nombre: nomInp.value.trim(),
+        cedula: cedInp.value.trim(),
+        telefono: telInp.value.trim(),
+        is_cliente: isCli.value === "true"
       };
 
+      if (!payload.nombre || !payload.cedula) {
+        showError("Nombre y documento son obligatorios.");
+        return;
+      }
+
+      if (cedulaYaRegistrada) {
+        showError("Este participante ya se encuentra registrado.");
+        return;
+      }
+
+      setBusy(btnGuardar, true, "Registrando...", "Registrar Participante");
+
       try {
-        const response = await fetch(`${API_BASE}/api/jugadores`, {
+        const r = await fetch(`${API}/api/jugadores`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        const result = await response.json();
-
-        statusBox.style.display = "block";
-        if (!response.ok || !result.success) {
-          statusBox.className = "status error";
-          statusBox.textContent = result.message || "No se pudo guardar el jugador";
-          return;
+        if (r.ok) {
+          showToast("¡Jugador Registrado!");
+          cedInp.value = "";
+          nomInp.value = "";
+          telInp.value = "";
+          isCli.value = "false";
+          statusCard.style.display = "none";
+          setTimeout(() => {
+            const t = document.getElementById("feedback")!;
+            t.style.display = "none";
+          }, 1600);
+        } else {
+          showError("No se pudo registrar el participante.");
         }
-
-        statusBox.className = "status ok";
-        statusBox.textContent = result.message;
-
-        const jugadorId = result?.data?.jugador?.id;
-        if (jugadorId) {
-          jugadorIdBox.style.display = "block";
-          jugadorIdBox.className = "status ok";
-          jugadorIdBox.innerHTML = `<strong>jugador_id:</strong> ${jugadorId}`;
-        }
-      } catch (error) {
-        statusBox.style.display = "block";
-        statusBox.className = "status error";
-        statusBox.textContent = error.message || "Error de red";
+      } catch {
+        showError("Error de red al registrar participante.");
+      } finally {
+        setBusy(btnGuardar, false, "Registrando...", "Registrar Participante");
       }
+    }
+
+    function showToast(msg: string) {
+      const t = document.getElementById("feedback")!;
+      t.textContent = msg;
+      t.style.display = "block";
+    }
+
+    document.getElementById("btn-validar")?.addEventListener("click", validar);
+    document.getElementById("btn-guardar")?.addEventListener("click", guardar);
+    cedInp.addEventListener("input", () => {
+      cedulaYaRegistrada = false;
+      setGuardarHabilitado(true);
+      errorCard.style.display = "none";
+      limpiarDatosDerivados();
     });
   </script>
 </MainLayout>

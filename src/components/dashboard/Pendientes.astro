@@ -1,0 +1,71 @@
+---
+---
+<div class="card" style="grid-area: pendientes;">
+  <div class="split-header">
+    <div>
+      <h2 class="card-title">Partidas VR sin Dueño</h2>
+      <p class="card-subtitle">Asigna los puntajes detectados en el casco.</p>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="refresh-pend">Actualizar</button>
+  </div>
+
+  <div class="queue-container">
+    <div id="pend-list" class="queue-stack">
+      <!-- Items -->
+    </div>
+    <div id="pend-msg" class="empty-queue" style="display:none">
+      <span class="icon">✨</span>
+      <p>Cola de partidas limpia.</p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .split-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px; }
+  
+  .queue-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  /* Custom Scrollbar */
+  .queue-container::-webkit-scrollbar { width: 6px; }
+  .queue-container::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+
+  .queue-stack { display: flex; flex-direction: column; gap: 12px; }
+
+  :global(.q-item) {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    transition: transform 0.2s;
+  }
+
+  :global(.q-item:hover) { transform: translateX(4px); border-color: var(--border-strong); }
+
+  :global(.q-info) { display: flex; flex-direction: column; }
+  :global(.q-time) { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+  :global(.q-score) { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1.1; }
+
+  :global(.q-assign) { display: flex; gap: 8px; }
+  :global(.q-assign input) { padding: 8px 12px; font-size: 13px; font-weight: 600; width: 150px; }
+
+  .empty-queue {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .empty-queue .icon { font-size: 32px; display: block; margin-bottom: 8px; }
+
+  @media (max-width: 600px) {
+    :global(.q-item) { grid-template-columns: 1fr; gap: 12px; }
+    :global(.q-assign input) { width: 100%; }
+  }
+</style>

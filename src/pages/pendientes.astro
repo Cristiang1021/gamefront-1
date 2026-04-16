@@ -1,192 +1,218 @@
-﻿---
+---
 import MainLayout from "../layouts/MainLayout.astro";
 ---
 
 <MainLayout title="Pendientes | VR Scoreboard">
-  <h1 class="page-title">Puntajes pendientes</h1>
-  <p class="page-subtitle">Partidas recibidas desde el juego sin jugador asignado.</p>
+  <div class="container animate-in">
+    <h1>Partidas sin Dueño</h1>
+    <p class="subtitle">Asigna los puntajes detectados en los cascos.</p>
 
-  <section class="card">
-    <div class="actions" style="margin-bottom: 12px;">
-      <button id="refresh-btn" class="btn btn-secondary">Actualizar</button>
+    <div class="actions-top">
+      <button class="btn btn-secondary btn-sm" id="refresh">Actualizar Lista</button>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Fecha</th>
-            <th>Puntaje</th>
-            <th>Cédula jugador</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="pendientes-body"></tbody>
-      </table>
+
+    <div id="loading" class="state-msg">Cargando partidas pendientes...</div>
+    <div id="pend-stack" class="stack">
+      <!-- Items -->
     </div>
-    <div id="pendientes-status" class="status" style="display:none; margin-top: 10px;"></div>
-  </section>
+
+    <div id="empty" class="empty-state" style="display:none">
+      <span class="empty-icon">✨</span>
+      <p>Todas las partidas han sido asignadas.</p>
+    </div>
+    <div id="error" class="state-msg error" style="display:none">
+      No se pudo cargar la cola de partidas.
+    </div>
+    <div id="feedback" class="state-msg success" style="display:none"></div>
+
+    <div class="pagination">
+      <button class="btn btn-ghost" id="prev-page">Anterior</button>
+      <span id="page-num">Pagina 1</span>
+      <button class="btn btn-ghost" id="next-page">Siguiente</button>
+    </div>
+  </div>
+
+  <style>
+    .actions-top { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+
+    :global(.q-card) {
+      background: var(--surface);
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: var(--ring) 0 0 0 1px;
+      transition: transform 0.2s;
+    }
+
+    :global(.q-card:active) { transform: scale(0.98); }
+
+    :global(.q-header) { display: flex; justify-content: space-between; align-items: center; }
+    :global(.q-time) { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    :global(.q-score) { font-size: 24px; font-weight: 700; color: var(--text); }
+
+    :global(.q-form) { display: flex; gap: 8px; }
+    :global(.q-form input) { flex: 1; }
+
+    .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 32px; }
+    .state-msg {
+      margin: 8px 0 12px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: var(--text-muted);
+      font-weight: 600;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .state-msg.error {
+      border-color: rgba(248, 113, 113, 0.45);
+      color: #fecaca;
+      background: rgba(248, 113, 113, 0.1);
+    }
+    .state-msg.success {
+      border-color: rgba(34, 197, 94, 0.4);
+      color: #bbf7d0;
+      background: rgba(34, 197, 94, 0.12);
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+    }
+  </style>
 
   <script>
-    const API_BASE = import.meta.env.PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-    const body = document.getElementById("pendientes-body");
-    const statusBox = document.getElementById("pendientes-status");
-    const refreshBtn = document.getElementById("refresh-btn");
-    const searchControllers = new Map();
+    const API = import.meta.env.PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+    const fmt = (v: any) => new Intl.NumberFormat("es-EC").format(v || 0);
+    const PAGE_SIZE = 10;
+    const stack = document.getElementById("pend-stack")!;
+    const loading = document.getElementById("loading")!;
+    const empty = document.getElementById("empty")!;
+    const error = document.getElementById("error")!;
+    const feedback = document.getElementById("feedback")!;
+    const prevPageBtn = document.getElementById("prev-page") as HTMLButtonElement;
+    const nextPageBtn = document.getElementById("next-page") as HTMLButtonElement;
+    const pageNum = document.getElementById("page-num")!;
+    let page = 0;
+    let allItems: any[] = [];
 
-    const formatNumber = (value) => new Intl.NumberFormat("es-EC").format(value || 0);
-    const formatFechaUtc5 = (value) => {
-      const isoWithOffset = `${value}-05:00`;
-      const date = new Date(isoWithOffset);
-      return new Intl.DateTimeFormat("es-EC", {
-        dateStyle: "short",
-        timeStyle: "short",
-        timeZone: "America/Bogota"
-      }).format(date);
-    };
-
-    function showStatus(message, isError = false) {
-      statusBox.style.display = "block";
-      statusBox.className = `status ${isError ? "error" : "ok"}`;
-      statusBox.textContent = message;
+    function showFeedback(msg: string) {
+      feedback.textContent = msg;
+      feedback.style.display = "block";
+      setTimeout(() => {
+        feedback.style.display = "none";
+      }, 1800);
     }
 
-    function renderRows(items) {
-      if (!items.length) {
-        body.innerHTML = `<tr><td colspan="4" class="muted">No hay puntajes pendientes.</td></tr>`;
-        return;
-      }
-
-      body.innerHTML = items
-        .map((item) => {
-          const fecha = formatFechaUtc5(item.fecha_juego);
-          return `
-            <tr>
-              <td>${fecha}</td>
-              <td>${formatNumber(item.puntaje)}</td>
-              <td>
-                <input
-                  type="text"
-                  id="cedula-${item.id}"
-                  list="sugerencias-cedula-${item.id}"
-                  placeholder="Ej: 0601234567"
-                  autocomplete="off"
-                />
-                <datalist id="sugerencias-cedula-${item.id}"></datalist>
-              </td>
-              <td>
-                <button class="btn btn-primary" data-asignar-id="${item.id}">Asignar</button>
-              </td>
-            </tr>
-          `;
-        })
-        .join("");
-    }
-
-    async function loadPendientes() {
-      statusBox.style.display = "none";
+    async function load() {
+      loading.style.display = "block";
+      error.style.display = "none";
+      empty.style.display = "none";
       try {
-        const response = await fetch(`${API_BASE}/api/puntajes/pendientes`);
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "No se pudo cargar pendientes");
-        }
-        renderRows(result.data || []);
-      } catch (error) {
-        body.innerHTML = "";
-        showStatus(error.message || "Error de red", true);
+        const r = await fetch(`${API}/api/puntajes/pendientes`);
+        if (!r.ok) throw new Error("api_error");
+        const d = await r.json();
+        allItems = d.data || [];
+        loading.style.display = "none";
+
+        const maxPage = Math.max(0, Math.ceil(allItems.length / PAGE_SIZE) - 1);
+        if (page > maxPage) page = maxPage;
+        renderPage();
+      } catch {
+        loading.style.display = "none";
+        stack.innerHTML = "";
+        error.style.display = "block";
+        pageNum.textContent = "Pagina 1";
+        prevPageBtn.disabled = true;
+        nextPageBtn.disabled = true;
       }
     }
 
-    async function buscarJugadorIdPorCedula(cedula) {
-      const response = await fetch(`${API_BASE}/api/jugadores?q=${encodeURIComponent(cedula)}`);
-      const result = await response.json();
-      if (!response.ok || !result.success) return null;
-      const exacto = (result.data || []).find((j) => String(j.cedula).trim() === String(cedula).trim());
-      return exacto?.id || null;
+    function renderPage() {
+      const start = page * PAGE_SIZE;
+      const pageItems = allItems.slice(start, start + PAGE_SIZE);
+      const maxPage = Math.max(0, Math.ceil(allItems.length / PAGE_SIZE) - 1);
+
+      empty.style.display = allItems.length ? "none" : "block";
+      pageNum.textContent = `Pagina ${page + 1}`;
+      prevPageBtn.disabled = page === 0;
+      nextPageBtn.disabled = page >= maxPage || allItems.length === 0;
+
+      stack.innerHTML = pageItems.map((item: any) => {
+        const t = new Date(`${item.fecha_juego}-05:00`).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" });
+        return `
+          <div class="q-card animate-in">
+            <div class="q-header">
+              <span class="q-time">${t} • Estación 1</span>
+              <span class="q-score">${fmt(item.puntaje)}</span>
+            </div>
+            <div class="q-form">
+              <input type="text" id="in-${item.id}" placeholder="Cédula del jugador..." inputmode="numeric" />
+              <button class="btn btn-primary btn-sm assign-btn" data-id="${item.id}">Asignar</button>
+            </div>
+          </div>
+        `;
+      }).join("");
     }
 
-    async function cargarSugerenciasCedula(pendienteId, term) {
-      const datalist = document.getElementById(`sugerencias-cedula-${pendienteId}`);
-      if (!datalist) return;
-
-      if (term.trim().length < 2) {
-        datalist.innerHTML = "";
-        return;
-      }
-
-      if (searchControllers.has(pendienteId)) {
-        searchControllers.get(pendienteId).abort();
-      }
-      const controller = new AbortController();
-      searchControllers.set(pendienteId, controller);
+    async function asignar(pid: string) {
+      const ced = (document.getElementById(`in-${pid}`) as HTMLInputElement).value;
+      if (!ced) return;
 
       try {
-        const response = await fetch(`${API_BASE}/api/jugadores?q=${encodeURIComponent(term.trim())}`, {
-          signal: controller.signal
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) return;
-
-        const options = (result.data || [])
-          .slice(0, 8)
-          .map((j) => `<option value="${j.cedula}">${j.nombre} - ${j.telefono}</option>`)
-          .join("");
-        datalist.innerHTML = options;
-      } catch (error) {
-        if (error.name !== "AbortError") {
-          datalist.innerHTML = "";
-        }
-      }
-    }
-
-    async function asignarPendiente(pendienteId) {
-      const input = document.getElementById(`cedula-${pendienteId}`);
-      const cedula = String(input?.value || "").trim();
-      if (!cedula) {
-        showStatus("Ingresa una cédula para asignar.", true);
-        return;
-      }
-
-      try {
-        const jugadorId = await buscarJugadorIdPorCedula(cedula);
-        if (!jugadorId) {
-          throw new Error("No existe un jugador registrado con esa cédula.");
+        const r1 = await fetch(`${API}/api/jugadores?q=${encodeURIComponent(ced)}`);
+        if (!r1.ok) throw new Error("lookup_error");
+        const d1 = await r1.json();
+        const j = (d1.data || []).find((x: any) => x.cedula === ced);
+        
+        if (!j) {
+          showFeedback("Jugador no registrado.");
+          return;
         }
 
-        const response = await fetch(`${API_BASE}/api/puntajes/${pendienteId}/asignar`, {
+        const r2 = await fetch(`${API}/api/puntajes/${pid}/asignar`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jugador_id: jugadorId })
+          body: JSON.stringify({ jugador_id: j.id })
         });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          throw new Error(result.message || "No se pudo asignar la partida");
-        }
-        showStatus("Partida asignada correctamente.");
-        await loadPendientes();
-      } catch (error) {
-        showStatus(error.message || "Error de red", true);
+        if (!r2.ok) throw new Error("assign_error");
+        showFeedback("Partida asignada.");
+        load();
+      } catch {
+        showFeedback("No se pudo asignar la partida.");
       }
     }
 
-    body.addEventListener("click", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) return;
-      const pendienteId = target.getAttribute("data-asignar-id");
-      if (pendienteId) {
-        asignarPendiente(pendienteId);
-      }
+    stack.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest(".assign-btn") as HTMLButtonElement | null;
+      if (!btn) return;
+      const pid = btn.dataset.id;
+      if (pid) asignar(pid);
     });
 
-    body.addEventListener("input", (event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement)) return;
-      if (!target.id.startsWith("cedula-")) return;
-      const pendienteId = target.id.replace("cedula-", "");
-      cargarSugerenciasCedula(pendienteId, target.value);
+    prevPageBtn.addEventListener("click", () => {
+      if (page === 0) return;
+      page--;
+      renderPage();
     });
 
-    refreshBtn.addEventListener("click", loadPendientes);
-    loadPendientes();
+    nextPageBtn.addEventListener("click", () => {
+      const maxPage = Math.max(0, Math.ceil(allItems.length / PAGE_SIZE) - 1);
+      if (page >= maxPage) return;
+      page++;
+      renderPage();
+    });
+
+    document.getElementById("refresh")?.addEventListener("click", load);
+    window.addEventListener("DOMContentLoaded", load);
   </script>
 </MainLayout>

@@ -1,0 +1,71 @@
+---
+---
+<div class="card" style="grid-area: buscar;">
+  <h2 class="card-title">Directorio de Jugadores</h2>
+  <p class="card-subtitle">Búsqueda rápida por nombre o documento.</p>
+
+  <div class="search-box-premium">
+    <input type="text" id="j-search" placeholder="Escribe para buscar..." />
+  </div>
+
+  <div id="j-list" class="results-stack">
+    <!-- Results -->
+  </div>
+
+  <div id="j-detail" class="detail-sheet" style="display:none">
+    <!-- Player Detail -->
+  </div>
+
+  <div id="j-msg" class="results-empty" style="display:none">
+    No se encontraron coincidencias.
+  </div>
+</div>
+
+<style>
+  .search-box-premium { margin-bottom: 20px; }
+  .search-box-premium input {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-weight: 500;
+  }
+
+  .results-stack { display: flex; flex-direction: column; }
+
+  :global(.p-tile) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 4px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  :global(.p-tile:hover) { background: #f8fafc; }
+
+  :global(.p-tile .p-main) { font-size: 14px; font-weight: 700; color: var(--text); }
+  :global(.p-tile .p-sub) { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+  :global(.detail-sheet) {
+    margin-top: 20px;
+    padding: 20px;
+    background: var(--bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .results-empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+</style>

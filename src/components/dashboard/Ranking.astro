@@ -1,0 +1,150 @@
+---
+---
+<div class="card" style="grid-area: ranking;">
+  <div class="split-header">
+    <div>
+      <h2 class="card-title">Récords VR</h2>
+      <p class="card-subtitle" id="rank-total">Cargando estadísticas...</p>
+    </div>
+    <div class="segmented-control">
+      <button class="active" data-mode="hoy">Hoy</button>
+      <button data-mode="ayer">Ayer</button>
+      <button data-mode="general">General</button>
+    </div>
+  </div>
+
+  <div id="podium-area" class="podium-stack">
+    <!-- Top 3 design -->
+  </div>
+
+  <div class="table-modern">
+    <div class="t-head">
+      <span>#</span>
+      <span>Participante</span>
+      <span style="text-align:right">Puntaje</span>
+    </div>
+    <div id="rank-rows" class="t-body">
+      <!-- Row data -->
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <button class="btn btn-secondary btn-sm" id="prev-btn">Anterior</button>
+    <span class="page-indicator" id="page-label">Página 1</span>
+    <button class="btn btn-secondary btn-sm" id="next-btn">Siguiente</button>
+  </div>
+</div>
+
+<style>
+  .split-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  /* Podium Design Premium */
+  .podium-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  :global(.top-tile) {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: white;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  :global(.top-tile.first) {
+    border-color: #fbbf24;
+    background: linear-gradient(90deg, #fffbeb, #ffffff);
+    box-shadow: 0 4px 15px rgba(251, 191, 36, 0.1);
+  }
+
+  :global(.tile-rank) {
+    font-weight: 800;
+    font-size: 18px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  :global(.first .tile-rank) { color: #d97706; }
+
+  :global(.tile-name) {
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  :global(.tile-score) {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--success);
+  }
+
+  /* Table Modern */
+  .table-modern {
+    margin-top: 16px;
+  }
+
+  .t-head {
+    display: grid;
+    grid-template-columns: 40px 1fr 80px;
+    padding: 0 12px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .t-body {
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global(.r-row) {
+    display: grid;
+    grid-template-columns: 40px 1fr 80px;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    transition: background 0.2s;
+  }
+
+  :global(.r-row:hover) {
+    background: var(--bg);
+  }
+
+  :global(.r-pos) { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  :global(.r-name) { font-size: 14px; font-weight: 600; }
+  :global(.r-score) { font-size: 14px; font-weight: 700; text-align: right; }
+
+  .footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .page-indicator {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+</style>
