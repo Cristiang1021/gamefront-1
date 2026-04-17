@@ -1,9 +1,13 @@
 ---
 import MainLayout from "../layouts/MainLayout.astro";
+import fibotMascot from "../../fibot.png";
 ---
 
 <MainLayout title="Ranking | VR Scoreboard">
   <div class="container animate-in">
+    <div class="brand-logo-wrap">
+      <img src={fibotMascot.src} alt="Mascota Fibot de Fibra Telecom" class="brand-logo" loading="eager" />
+    </div>
     <h1>Clasificación</h1>
     <p class="subtitle">Los mejores puntajes del evento.</p>
 
@@ -11,10 +15,12 @@ import MainLayout from "../layouts/MainLayout.astro";
     <div class="filters-stack">
       <div class="filter-group">
         <label>Rango de Tiempo</label>
-        <div class="segmented-control" id="range-filter">
-          <button class="active" data-value="hoy">Hoy</button>
-          <button data-value="ayer">Ayer</button>
-          <button data-value="general">General</button>
+        <div class="time-filter-row">
+          <div class="segmented-control" id="range-filter">
+            <button class="active" data-value="fecha">Fecha</button>
+            <button data-value="general">General</button>
+          </div>
+          <input type="date" id="date-filter" class="date-input" />
         </div>
       </div>
 
@@ -49,9 +55,52 @@ import MainLayout from "../layouts/MainLayout.astro";
   </div>
 
   <style>
+    .container {
+      position: relative;
+    }
+    .brand-logo-wrap {
+      position: absolute;
+      top: 4px;
+      right: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .brand-logo {
+      width: min(273px, 52vw);
+      height: auto;
+      object-fit: contain;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 700px) {
+      .brand-logo {
+        width: min(208px, 49vw);
+        opacity: 0.86;
+      }
+    }
+
     .filters-stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
     .filter-group { display: flex; flex-direction: column; gap: 8px; }
     .filter-group label { color: var(--text-muted); font-size: 12px; }
+    .time-filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .date-input {
+      min-height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .date-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--ring);
+    }
+    .date-input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.8; cursor: pointer; }
+    .date-input.is-hidden { display: none; }
 
     .podium-modern { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
     
@@ -143,7 +192,8 @@ import MainLayout from "../layouts/MainLayout.astro";
     const fmt = (v: any) => new Intl.NumberFormat("es-EC").format(v || 0);
 
     class RankingApp {
-      mode = "hoy";
+      rangeMode = "fecha";
+      selectedDate = this.getLocalDateISO();
       type = "todos";
       page = 0;
 
@@ -152,6 +202,8 @@ import MainLayout from "../layouts/MainLayout.astro";
       }
 
       async init() {
+        this.syncDateInput();
+        this.toggleDateFilter();
         this.bindEvents();
         await this.load();
       }
@@ -160,8 +212,17 @@ import MainLayout from "../layouts/MainLayout.astro";
         document.getElementById("range-filter")?.addEventListener("click", (e) => {
           const btn = (e.target as HTMLElement).closest("button");
           if (!btn) return;
-          this.mode = btn.dataset.value!;
+          this.rangeMode = btn.dataset.value!;
           this.updateActive("range-filter", btn);
+          this.toggleDateFilter();
+          this.page = 0;
+          this.load();
+        });
+
+        document.getElementById("date-filter")?.addEventListener("change", (e) => {
+          const nextDate = (e.target as HTMLInputElement).value;
+          if (!nextDate) return;
+          this.selectedDate = nextDate;
           this.page = 0;
           this.load();
         });
@@ -189,6 +250,71 @@ import MainLayout from "../layouts/MainLayout.astro";
         activeBtn.classList.add("active");
       }
 
+      getLocalDateISO() {
+        const now = new Date();
+        const offsetMs = now.getTimezoneOffset() * 60000;
+        return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+      }
+
+      syncDateInput() {
+        const dateInput = document.getElementById("date-filter") as HTMLInputElement | null;
+        if (!dateInput) return;
+        dateInput.value = this.selectedDate;
+        dateInput.max = this.getLocalDateISO();
+      }
+
+      toggleDateFilter() {
+        const dateInput = document.getElementById("date-filter");
+        if (!dateInput) return;
+        dateInput.classList.toggle("is-hidden", this.rangeMode === "general");
+      }
+
+      buildRankingUrls(skip: number, clientParam: string) {
+        const extra = `limit=10&skip=${skip}${clientParam}`;
+
+        if (this.rangeMode === "general") {
+          return [`${API}/api/ranking/general?${extra}`];
+        }
+
+        const date = this.selectedDate;
+        const today = this.getLocalDateISO();
+        const yesterdayObj = new Date(`${today}T00:00:00`);
+        yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+        const yesterday = yesterdayObj.toISOString().slice(0, 10);
+        const urls: string[] = [];
+
+        if (date === today) urls.push(`${API}/api/ranking/hoy?${extra}`);
+        if (date === yesterday) urls.push(`${API}/api/ranking/ayer?${extra}`);
+
+        urls.push(
+          `${API}/api/ranking/fecha?fecha=${encodeURIComponent(date)}&${extra}`,
+          `${API}/api/ranking/fecha?date=${encodeURIComponent(date)}&${extra}`,
+          `${API}/api/ranking/dia?fecha=${encodeURIComponent(date)}&${extra}`,
+          `${API}/api/ranking/by-date?fecha=${encodeURIComponent(date)}&${extra}`
+        );
+
+        return urls;
+      }
+
+      async fetchRankingData(skip: number, clientParam: string) {
+        const urls = this.buildRankingUrls(skip, clientParam);
+        let lastError: Error | null = null;
+
+        for (const url of urls) {
+          try {
+            const response = await fetch(url);
+            if (!response.ok) continue;
+            const parsed = await response.json();
+            return parsed.data || [];
+          } catch (error) {
+            lastError = error instanceof Error ? error : new Error("ranking_fetch_error");
+          }
+        }
+
+        if (lastError) throw lastError;
+        throw new Error("ranking_endpoint_not_available");
+      }
+
       async load() {
         const podium = document.getElementById("podium")!;
         const list = document.getElementById("list")!;
@@ -205,9 +331,7 @@ import MainLayout from "../layouts/MainLayout.astro";
 
         try {
           const skip = this.page * 10;
-          const r = await fetch(`${API}/api/ranking/${this.mode}?limit=10&skip=${skip}${clientParam}`);
-          const d = await r.json();
-          const items = d.data || [];
+          const items = await this.fetchRankingData(skip, clientParam);
           loading.style.display = "none";
 
           document.getElementById("page-num")!.textContent = `Página ${this.page + 1}`;

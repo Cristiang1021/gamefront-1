@@ -1,5 +1,6 @@
 ---
 const path = Astro.url.pathname;
+import brandLogo from "../../logo_fibra.jpg";
 const links = [
   { href: "/ranking", label: "Ranking", icon: `<path d="M12 20V10M18 20V4M6 20v-4" />` },
   { href: "/registro", label: "Registro", icon: `<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="16" y1="11" x2="22" y2="11" />` },
@@ -8,15 +9,20 @@ const links = [
 ---
 
 <nav class="bottom-nav" aria-label="Navegacion principal">
-  {
-    links.map((link) => (
-      <a
-        href={link.href}
-        class={`nav-item ${path.startsWith(link.href) ? "active" : ""}`}
-      >
-        <svg viewBox="0 0 24 24" set:html={link.icon} />
-        <span>{link.label}</span>
-      </a>
-    ))
-  }
+  <div class="nav-links">
+    {
+      links.map((link) => (
+        <a
+          href={link.href}
+          class={`nav-item ${path.startsWith(link.href) ? "active" : ""}`}
+        >
+          <svg viewBox="0 0 24 24" set:html={link.icon} />
+          <span>{link.label}</span>
+        </a>
+      ))
+    }
+  </div>
+  <a href="/" class="nav-brand" aria-label="Inicio">
+    <img src={brandLogo.src} alt="Fibra Telecom" />
+  </a>
 </nav>

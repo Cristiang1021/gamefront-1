@@ -171,6 +171,11 @@ input:focus {
   display: flex;
 }
 
+.nav-links {
+  display: flex;
+  flex: 1;
+}
+
 .nav-item {
   flex: 1;
   color: var(--text-muted);
@@ -193,6 +198,7 @@ input:focus {
 }
 
 .nav-item.active { color: var(--accent); }
+.nav-brand { display: none; }
 .animate-in { animation: fadeInUp 0.25s ease forwards; }
 .is-hidden { display: none !important; }
 
@@ -202,14 +208,19 @@ input:focus {
 }
 
 @media (min-width: 768px) {
-  .container { padding-top: 86px; padding-bottom: 24px; max-width: 920px; }
+  .container { padding-top: 36px; padding-bottom: 24px; max-width: 920px; }
   .bottom-nav {
+    position: relative;
     top: 0;
     bottom: auto;
     height: 64px;
     justify-content: center;
     gap: 20px;
-    padding: 0 16px;
+    padding: 0 20px;
+  }
+  .nav-links {
+    flex: 0 0 auto;
+    gap: 20px;
   }
   .nav-item {
     flex: 0 0 auto;
@@ -222,5 +233,18 @@ input:focus {
   .nav-item.active {
     background: var(--frosted);
     box-shadow: var(--ring) 0 0 0 1px;
+  }
+  .nav-brand {
+    display: inline-flex;
+    position: absolute;
+    left: 44px;
+    align-items: center;
+    height: 100%;
+  }
+  .nav-brand img {
+    width: 170px;
+    height: auto;
+    object-fit: contain;
+    opacity: 0.95;
   }
 }
